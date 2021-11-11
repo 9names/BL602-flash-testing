@@ -1,55 +1,7 @@
-# BL602 Rust example
+# BL602 Flash tests
 
-A simple example program using the BL602 Rust HAL, using the serial bootloader so anyone can use Rust on their BL602-based board.  
-There's no debugger support in this crate - use https://github.com/sipeed/bl602-rust-guide or a standalone debugger if you need that 
+A simple environment for testing the flash controller.
 
-## Try it out!
+Program loads to memory, feedback is via RTT.
 
-If you don't have Rust and Cargo installed, install the stable toolchain using rustup from https://rustup.rs/
-Rustup will prompt you for toolchain type, install location, etc. The default options are fine, and will work with this project
-
-Once you've got Rust, open a new console/command prompt to complete the reset of the instructions
-
-Grab the toolchain for bl602
-```
-rustup target add riscv32imac-unknown-none-elf
-```
-
-Install cargo-blflash
-```
-cargo install cargo-blflash
-```
-
-Enter bootloader mode on the board by holding the boot button and pressing the en button
-
-run
-```
-cargo blflash --port /dev/ttyUSB0
-```
-
-When you see  
-INFO  blflash] Success  
-connect to the board with a terminal emulator like putty or minicom
-```
-minicom -D /dev/ttyUSB0 -b2000000
-```
-
-then hit the en button again to run your program!
-
-## License
-
-This project is licensed under either of Mulan PSL v2 or MIT.
-
-```
-Copyright (c) 2020 Sipeed Co.,Ltd.
-bl602-hal is licensed under Mulan PSL v2.
-You can use this software according to the terms and conditions of the Mulan PSL v2.
-You may obtain a copy of Mulan PSL v2 at:
-
-    http://license.coscl.org.cn/MulanPSL2
-
-THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
-EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
-MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
-See the Mulan PSL v2 for more details.
-```
+Recommended using J-Link probe connected via JTAG, and probe-rs or Segger's tools to load code and get RTT feedback

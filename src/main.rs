@@ -7,52 +7,58 @@ use hal::{
     clock::{Strict, SysclkFreq, UART_PLL_FREQ},
     pac,
     prelude::*,
-    serial::*,
 };
 use embedded_hal::delay::blocking::DelayMs;
-use embedded_hal::digital::blocking::OutputPin;
-use panic_halt as _;
+use panic_rtt_target as _;
+
+use bl602_rom_wrapper::rom::{self, sflash as sflash, xip_sflash as xip};
+mod flash;
+mod xip_flash;
+use rtt_target::{rtt_init_print, rprintln};
 
 #[riscv_rt::entry]
 fn main() -> ! {
+    rtt_init_print!();
+    rprintln!("Program start");
     let dp = pac::Peripherals::take().unwrap();
     let mut parts = dp.GLB.split();
 
     // Set up all the clocks we need
+    // Minimal clock setup here - PLL was not working correctly, probably don't want it anyway
     let clocks = Strict::new()
-        .use_pll(40_000_000u32.Hz())
-        .sys_clk(SysclkFreq::Pll160Mhz)
-        .uart_clk(UART_PLL_FREQ.Hz())
         .freeze(&mut parts.clk_cfg);
-
-    // Set up uart output. Since this microcontroller has a pin matrix,
-    // we need to set up both the pins and the muxs
-    let pin16 = parts.pin16.into_uart_sig0();
-    let pin7 = parts.pin7.into_uart_sig7();
-    let mux0 = parts.uart_mux0.into_uart0_tx();
-    let mux7 = parts.uart_mux7.into_uart0_rx();
-
-    // Configure our UART to 2MBaud, and use the pins we configured above
-    let mut serial = Serial::uart0(
-        dp.UART,
-        Config::default().baudrate(2_000_000.Bd()),
-        ((pin16, mux0), (pin7, mux7)),
-        clocks,
-    );
-    // Also set up a pin as GPIO, to blink an LED
-    let mut gpio5 = parts.pin5.into_pull_down_output();
 
     // Create a blocking delay function based on the current cpu frequency
     let mut d = bl602_hal::delay::McycleDelay::new(clocks.sysclk().0);
 
-    loop {
-        // Toggle the LED on and off once a second. Report LED status over UART
-        gpio5.set_high().unwrap();
-        serial.write_str("LEDs on\r\n").ok();
-        d.delay_ms(1000).unwrap();
+    rprintln!("Ready to test flash routines");
 
-        gpio5.set_low().unwrap();
-        serial.write_str("LEDs off\r\n").ok();
+    // Disable the flash cache, get rid of the flash offset, and disconnect the flash from the flash accelerator
+    flash::Init(1,2,3);
+
+    let mut cfg = rom::flashconfig::winbond_80_ew_cfg();
+    // JEDEC ID is 3 bytes, make sure writebuf is at least that big
+    // I've tested it, it does only write 3 bytes :D
+    let mut writebuf:[u8;3] = [0;3];
+    let _ = sflash::SFlash_GetJedecId(&mut cfg, writebuf.as_mut_ptr());
+
+    rprintln!("JEDEC id after init");
+	for c in writebuf {
+        rprintln!("{:x}", c);
+    }
+
+    flash::UnInit(1);
+    rprintln!("JEDEC id after uninit:");
+    let _ = sflash::SFlash_GetJedecId(&mut cfg, writebuf.as_mut_ptr());
+    for c in writebuf {
+        rprintln!("{:x}", c);
+    }
+
+    rprintln!("Testing done!");
+    //panic!("ded");
+    loop {
+        // Could do a blink here if you want better feedback.
+        // I'm using the bl602 EVB, so the LEDs are already busy being JTAG
         d.delay_ms(1000).unwrap();
     }
 }

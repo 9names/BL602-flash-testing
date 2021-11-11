@@ -12,6 +12,9 @@ panic-halt = "0.2.0"
 riscv = "0.6.0"
 embedded-time = "0.10.1"
 nb = "1.0.0"
+bl602_rom_wrapper = { git = "https://github.com/9names/bl602-rom-wrapper" }
+rtt-target = { git = "https://github.com/9names/rtt-target", branch="riscv_atomic_polyfill", features = ["riscv"] }
+panic-rtt-target = {  git = "https://github.com/9names/rtt-target", branch="riscv_atomic_polyfill", features = ["riscv"] }
 
 # You probably don't want to use a debug build, but lots of people accidentally do
 # give the code at least a low level of optimization
@@ -29,4 +32,4 @@ opt-level = "z"
 codegen-units = 1 # better optimizations
 debug = true # symbols are nice and they don't increase the size on Flash
 lto = true # better optimizations
-# opt-level = "z" # optimize for size instead of speed
+opt-level = "z" # optimize for size instead of speed
