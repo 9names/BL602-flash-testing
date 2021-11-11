@@ -18,33 +18,12 @@ const BASE_ADDRESS: u32 = 0x2300_0000;
 /// `Return` - 0 on success, 1 on failure.
 #[no_mangle]
 #[inline(never)]
-pub extern "C" fn EraseSector(adr: u32) -> i32 {
+pub extern "C" fn EraseSectorX(adr: u32) -> i32 {
     let mut cfg = rom::flashconfig::winbond_80_ew_cfg();
     match xip::XIP_SFlash_Erase_With_Lock(&mut cfg, adr, 4096) {
         0 => 0,
         _ => 1,
     }
-}
-
-/// Initializes the microcontroller for Flash programming. Returns 0 on Success, 1 otherwise
-///
-/// This is invoked whenever an attempt is made to download the program to Flash.
-///
-///  # Arguments
-///
-/// `adr` - specifies the base address of the device.
-///
-/// `clk` - specifies the clock frequency for prgramming the device.
-///
-/// `fnc` - is a number: 1=Erase, 2=Program, 3=Verify, to perform different init based on command
-#[no_mangle]
-#[inline(never)]
-pub extern "C" fn Init(_adr: u32, _clk: u32, _fnc: u32) -> i32 {
-    sflash::SFlash_Cache_Read_Disable();
-    SF_Ctrl_Set_Flash_Image_Offset(0);
-    SF_Ctrl_Set_Owner(SF_Ctrl_Owner_Type_SF_CTRL_OWNER_SAHB);    
-    // 0
-    0
 }
 
 /// Write code into the Flash memory. Call this to download a program to Flash. Returns 0 on Success, 1 otherwise
@@ -60,7 +39,7 @@ pub extern "C" fn Init(_adr: u32, _clk: u32, _fnc: u32) -> i32 {
 /// `buf` - points to the data buffer containing the data to be programmed
 #[no_mangle]
 #[inline(never)]
-pub extern "C" fn ProgramPage(adr: u32, sz: u32, buf: *mut u8) -> i32 {
+pub extern "C" fn ProgramPageX(adr: u32, sz: u32, buf: *mut u8) -> i32 {
     let mut cfg = rom::flashconfig::winbond_80_ew_cfg();
     match xip::XIP_SFlash_Write_With_Lock(&mut cfg, adr, buf, sz) {
         0 => 0,
@@ -77,7 +56,7 @@ pub extern "C" fn ProgramPage(adr: u32, sz: u32, buf: *mut u8) -> i32 {
 /// `fnc` - is a number: 1=Erase, 2=Program, 3=Verify, to perform different de-init based on command
 #[no_mangle]
 #[inline(never)]
-pub extern "C" fn UnInit(_fnc: u32) -> i32 {
+pub extern "C" fn UnInitX(_fnc: u32) -> i32 {
     // Put the flash controller back into memory-mapped mode
     // TODO: re-enable cache
     SF_Ctrl_Set_Owner(SF_Ctrl_Owner_Type_SF_CTRL_OWNER_IAHB);
@@ -103,7 +82,7 @@ pub extern "C" fn UnInit(_fnc: u32) -> i32 {
 /// We're calling into C data structures, there's no safety here
 #[no_mangle]
 #[inline(never)]
-pub unsafe extern "C" fn Verify(adr: u32, sz: u32, buf: *mut u8, expected: *mut i16, found: *mut i16) -> u32 {
+pub unsafe extern "C" fn VerifyX(adr: u32, sz: u32, buf: *mut u8, expected: *mut i16, found: *mut i16) -> u32 {
     let mut readbuf: [u8; 4096] = [0; 4096];
     let verifybuf = slice::from_raw_parts(buf, sz as usize);
 
@@ -126,7 +105,7 @@ pub unsafe extern "C" fn Verify(adr: u32, sz: u32, buf: *mut u8, expected: *mut 
 /// Not a CMSIS function. For testing
 #[no_mangle]
 #[inline(never)]
-pub unsafe extern "C" fn Read(adr: u32, sz: u32, readbuf: *mut u8) -> u32 {
+pub unsafe extern "C" fn ReadX(adr: u32, sz: u32, readbuf: *mut u8) -> u32 {
     let mut cfg = rom::flashconfig::winbond_80_ew_cfg();
     let readbuf = slice::from_raw_parts_mut(readbuf, sz as usize);
 
