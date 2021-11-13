@@ -2,11 +2,11 @@
 use core::{intrinsics::transmute, ops::Range, slice};
 
 use bl602_rom_wrapper::rom::xip_sflash::XIP_SFlash_Read_Need_Lock;
-use bl602_rom_wrapper::rom::{SPI_Flash_Cfg_Type, sflash as sflash, xip_sflash as xip};
+use bl602_rom_wrapper::rom::{sflash, xip_sflash as xip, SPI_Flash_Cfg_Type};
 
 use bl602_rom_wrapper::rom::{
     self,
-    sf_ctrl::{SF_Ctrl_Set_Flash_Image_Offset,SF_Ctrl_Set_Owner},
+    sf_ctrl::{SF_Ctrl_Set_Flash_Image_Offset, SF_Ctrl_Set_Owner},
     SF_Ctrl_Mode_Type_SF_CTRL_QPI_MODE, SF_Ctrl_Owner_Type_SF_CTRL_OWNER_IAHB,
     SF_Ctrl_Owner_Type_SF_CTRL_OWNER_SAHB,
 };
@@ -82,13 +82,19 @@ pub extern "C" fn UnInitX(_fnc: u32) -> i32 {
 /// We're calling into C data structures, there's no safety here
 #[no_mangle]
 #[inline(never)]
-pub unsafe extern "C" fn VerifyX(adr: u32, sz: u32, buf: *mut u8, expected: *mut i16, found: *mut i16) -> u32 {
+pub unsafe extern "C" fn VerifyX(
+    adr: u32,
+    sz: u32,
+    buf: *mut u8,
+    expected: *mut i16,
+    found: *mut i16,
+) -> u32 {
     let mut readbuf: [u8; 4096] = [0; 4096];
     let verifybuf = slice::from_raw_parts(buf, sz as usize);
 
     if sz > 4096 {
         return 0;
-    }    
+    }
 
     xip::XIP_SFlash_Read_Via_Cache_Need_Lock(adr, readbuf.as_mut_ptr(), sz);
 
@@ -109,7 +115,6 @@ pub unsafe extern "C" fn ReadX(adr: u32, sz: u32, readbuf: *mut u8) -> u32 {
     let mut cfg = rom::flashconfig::winbond_80_ew_cfg();
     let readbuf = slice::from_raw_parts_mut(readbuf, sz as usize);
 
-    
     if xip::XIP_SFlash_Read_Need_Lock(&mut cfg, adr, readbuf.as_mut_ptr(), sz) != 0 {
         return 0;
     }

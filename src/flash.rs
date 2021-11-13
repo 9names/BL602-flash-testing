@@ -1,11 +1,11 @@
 // These are for verify, remove them if we don't implement that
 use core::slice;
 
-use bl602_rom_wrapper::rom::{sflash as sflash, xip_sflash as xip};
+use bl602_rom_wrapper::rom::{sflash, xip_sflash as xip};
 
 use bl602_rom_wrapper::rom::{
     self,
-    sf_ctrl::{SF_Ctrl_Set_Flash_Image_Offset,SF_Ctrl_Set_Owner},
+    sf_ctrl::{SF_Ctrl_Set_Flash_Image_Offset, SF_Ctrl_Set_Owner},
     SF_Ctrl_Mode_Type_SF_CTRL_QPI_MODE, SF_Ctrl_Owner_Type_SF_CTRL_OWNER_IAHB,
     SF_Ctrl_Owner_Type_SF_CTRL_OWNER_SAHB,
 };
@@ -62,7 +62,7 @@ pub extern "C" fn EraseChip() -> i32 {
 pub extern "C" fn Init(_adr: u32, _clk: u32, _fnc: u32) -> i32 {
     sflash::SFlash_Cache_Read_Disable();
     SF_Ctrl_Set_Flash_Image_Offset(0);
-    SF_Ctrl_Set_Owner(SF_Ctrl_Owner_Type_SF_CTRL_OWNER_SAHB);    
+    SF_Ctrl_Set_Owner(SF_Ctrl_Owner_Type_SF_CTRL_OWNER_SAHB);
     0
 }
 
@@ -123,7 +123,13 @@ pub extern "C" fn UnInit(_fnc: u32) -> i32 {
 /// We're calling into C data structures, there's no safety here
 #[no_mangle]
 #[inline(never)]
-pub unsafe extern "C" fn Verify(adr: u32, sz: u32, buf: *mut u8, expected: *mut i16, found: *mut i16) -> u32 {
+pub unsafe extern "C" fn Verify(
+    adr: u32,
+    sz: u32,
+    buf: *mut u8,
+    expected: *mut i16,
+    found: *mut i16,
+) -> u32 {
     let mut cfg = rom::flashconfig::winbond_80_ew_cfg();
     let addr = adr.wrapping_sub(BASE_ADDRESS);
     let mut readbuf: [u8; 4096] = [0; 4096];
