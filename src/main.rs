@@ -61,6 +61,8 @@ fn main() -> ! {
     // JEDEC ID is 3 bytes, make sure writebuf is at least that big
     // I've tested it, it does only write 3 bytes :D
     let mut jedec_buf: [u8; 3] = [0; 3];
+    // Source code for this function is at
+    // https://github.com/bouffalolab/bl_iot_sdk/blob/07ceb89192cd720e1645e6c37081c85960a33580/components/platform/soc/bl602/bl602_std/bl602_std/StdDriver/Src/bl602_sflash.c#L717
     let _ = sflash::SFlash_GetJedecId(&mut cfg, jedec_buf.as_mut_ptr());
     rprintln!(
         "JEDEC id after init: {:x} {:x} {:x}",
@@ -71,8 +73,19 @@ fn main() -> ! {
 
     // The sflash functions expect addresses starting at 0 for flash.
     // 0 == 2300_0000 if flash offset 0, or 2301_0000 if using the default application offset
+
+    // SFlash_Erase internally handles erasing of different block sizes
+    // If erase size >= 64KB, it will call SFlash_Blk64_Erase until < 64KB
+    // If erase size >= 32KB, it will call SFlash_Blk32_Erase until < 32KB
+    // If erase size < 32KB, it will call SFlash_Sector_Erase which will erase
+    // flashCfg->sectorSize * 1024 bytes until it reaches the end.
+    // In our case, sectorSize = 4, so 4KB is the smallest erase size
+    // Source code for this function is at
+    // https://github.com/bouffalolab/bl_iot_sdk/blob/07ceb89192cd720e1645e6c37081c85960a33580/components/platform/soc/bl602/bl602_std/bl602_std/StdDriver/Src/bl602_sflash.c#L545
     sflash::SFlash_Erase(&mut cfg, 0, 256);
     let writelen = unsafe { TEST_BUFFER.len() } as u32;
+    // Source code for this function is at
+    // https://github.com/bouffalolab/bl_iot_sdk/blob/07ceb89192cd720e1645e6c37081c85960a33580/components/platform/soc/bl602/bl602_std/bl602_std/StdDriver/Src/bl602_sflash.c#L594
     sflash::SFlash_Program(
         &mut cfg,
         SF_Ctrl_Mode_Type_SF_CTRL_QPI_MODE,
