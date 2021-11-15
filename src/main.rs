@@ -11,7 +11,11 @@ use hal::{
 };
 use panic_rtt_target as _;
 
-use bl602_rom_wrapper::rom::{self, sflash, xip_sflash as xip, SF_Ctrl_Mode_Type_SF_CTRL_QPI_MODE};
+use bl602_rom_wrapper::rom::{
+    self,
+    sflash::{self, SFlash_Chip_Erase},
+    xip_sflash as xip, SF_Ctrl_Mode_Type_SF_CTRL_QPI_MODE,
+};
 mod flash;
 mod xip_flash;
 use rtt_target::{rprint, rprintln, rtt_init_print};
@@ -82,28 +86,56 @@ fn main() -> ! {
     // In our case, sectorSize = 4, so 4KB is the smallest erase size
     // Source code for this function is at
     // https://github.com/bouffalolab/bl_iot_sdk/blob/07ceb89192cd720e1645e6c37081c85960a33580/components/platform/soc/bl602/bl602_std/bl602_std/StdDriver/Src/bl602_sflash.c#L545
-    sflash::SFlash_Erase(&mut cfg, 0, 256);
+    const SIZE_OF_FLASH: u32 = 2097152;
+    const WRITE_SIZE: usize = 256;
+    const LINE_LENGTH: u32 = 128;
+    //sflash::SFlash_Erase(&mut cfg, 0, 256);
+    rprintln!("\nPerforming chip erase:");
+    SFlash_Chip_Erase(&mut cfg);
+    rprintln!("Done with erase");
     let writelen = unsafe { TEST_BUFFER.len() } as u32;
     // Source code for this function is at
     // https://github.com/bouffalolab/bl_iot_sdk/blob/07ceb89192cd720e1645e6c37081c85960a33580/components/platform/soc/bl602/bl602_std/bl602_std/StdDriver/Src/bl602_sflash.c#L594
-    sflash::SFlash_Program(
-        &mut cfg,
-        SF_Ctrl_Mode_Type_SF_CTRL_QPI_MODE,
-        0,
-        unsafe { TEST_BUFFER.as_mut_ptr() },
-        writelen,
-    );
+    rprintln!("\nWriting to flash starting at flash address 0 (mapped offset 0x2300_0000)");
+    let mut newline_counter: u32 = 0;
+    for adr in (0..SIZE_OF_FLASH).step_by(WRITE_SIZE) {
+        rprint!(".");
+        sflash::SFlash_Program(
+            &mut cfg,
+            SF_Ctrl_Mode_Type_SF_CTRL_QPI_MODE,
+            adr,
+            unsafe { TEST_BUFFER.as_mut_ptr() },
+            writelen,
+        );
+        newline_counter += 1;
+        if newline_counter % LINE_LENGTH == LINE_LENGTH - 1 {
+            rprintln!("");
+        }
+    }
 
     flash::UnInit(1);
 
-    rprintln!("\nData at flash offset 0x2300000 (read directly)");
-    for i in 0..unsafe { TEST_BUFFER.len() } {
-        let data_ptr = (0x2300_0000 + i) as *const u8;
-        unsafe {
-            let data = data_ptr.read_volatile();
-            rprint!("{:02x} ", data);
+    rprintln!("\n\nDone writing.\nData at flash offset 0x2300_0000 (read directly)");
+    newline_counter = 0;
+    for adr in (0..SIZE_OF_FLASH).step_by(WRITE_SIZE) {
+        rprint!(".");
+        for i in 0..WRITE_SIZE as u32 {
+            let addr_mapped = 0x2300_0000 + i + adr;
+            let data_ptr = addr_mapped as *const u8;
+            unsafe {
+                let data = data_ptr.read_volatile();
+                let expected = TEST_BUFFER[i as usize];
+                if data != expected {
+                    rprintln!(
+                        "\nAddr {:08x} fail, expected {:02x} found {:02x}",
+                        addr_mapped,
+                        expected,
+                        data
+                    );
+                }
+            }
         }
-        if i % 32 == 31 {
+        if newline_counter % LINE_LENGTH == LINE_LENGTH - 1 {
             rprintln!("");
         }
     }
